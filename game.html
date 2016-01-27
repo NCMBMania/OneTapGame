@@ -1,0 +1,159 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <link rel="stylesheet" href="components/loader.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="components/loader.js"></script>
+    <script src="js/ncmb-2.0.0.min.js"></script>
+    <script>
+        // Add your code here
+        </script>
+        <style>
+        body {
+            background-color: #BBDEFB;
+            text-align: center;
+            font-size: 14px;
+            font-family: Verdana, sans-serif;
+            padding-top: 20px;
+        }
+        canvas {
+            margin: 10px auto;
+        }
+        h1 {
+            font-size: 25px;
+            padding-bottom: 7px;
+            border-bottom: 1px solid #000;
+        }
+        ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        ul > li {
+            padding-bottom: 7px;
+            font-size: 18px;
+        }
+        </style>
+    </head>
+    <body>
+
+        <div id="username"></div>
+        <canvas id="mycanvas" width="300" height="300"></canvas>
+        <h1>Ranking</h1>
+        <ul></ul>
+        <script>
+        $(function() {
+            // mBaaSの初期化
+            var application_key = "d32ea7323c9817b5a4e856736d9934a7dea9a9a6ca9327156fb415d25473ea5b";
+            var client_key = "0640b4c2a0fc5351ce2ea83937f9812689b77ecb6cb42dd2de9bff49d98fbd80";
+            var ncmb = new NCMB(application_key, client_key);
+            // $("#username").text(ncmb.User.getCurrentUser().userName);
+            
+            // ログインチェック
+            var user = ncmb.User.getCurrentUser();            
+            if (user === null) {
+                location.href = "./index.html";
+            } else {
+                $("#username").text(user.userName + ' (logout)');
+            }
+            
+            // ログアウト処理
+            $("#username").on("click", function() {
+                ncmb.User.logout().then(function() {
+                    location.href = "./index.html";
+                }) 
+            });
+            
+            // canvasの設定
+            var canvas = document.getElementById('mycanvas');
+            var ctx = canvas.getContext("2d");
+
+            // 変数の定義
+            var centerX = canvas.width / 2;
+            var centerY = canvas.height / 2;
+            var r;
+            var timerId;
+            var isPlaying = false;
+            var target;
+            var score;
+
+            // スタート画面
+            ctx.font = "normal 28px Verdana";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillText("Stop at Target!", centerX, centerY);
+
+            // イベントの設定
+            $('#mycanvas').on('click', function() {
+                if (isPlaying === true) {
+                    // ゲームを止める
+                    clearTimeout(timerId);
+                    score = 100 - Math.abs(target - r);
+                    // console.log(target, r, score);
+                    // スコアの表示
+                    ctx.fillText("You: " + r, centerX, centerY);
+                    ctx.font = "bold 35px Verdana";
+                    ctx.fillText("Score: " + score, centerX, centerY + 50);
+                    ctx.font = "normal 28px Verdana";
+                    // スコアの格納
+                    rank.set("username", user.userName);
+                    rank.set("score", score);
+                    var acl = new ncmb.Acl();
+                    acl.setPublicReadAccess(true);
+                    acl.setUserWriteAccess(user, true);
+                    rank.set("acl", acl);
+                    rank.save();
+                } else {
+                    // ゲームを始める
+                    target = Math.floor(Math.random() * 121) + 80;
+                    r = 0;
+                    drawCircle();
+                }
+                isPlaying = !isPlaying;
+            });
+
+            // 円を描く
+            function drawCircle() {
+                ctx.fillStyle = "#BBDEFB";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = "#1976D2";
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, r, 0, Math.PI * 2, false);
+                ctx.fill();
+
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillText("Target: " + target, centerX, centerY - 35);
+
+                r++;
+                timerId = setTimeout(function() {
+                    drawCircle();
+                }, 12);
+            }
+
+            // ランキング表示
+            function showRanking() {
+                Rank.limit(5)
+                .order("score", true)
+                .fetchAll()
+                .then(function(ary) {
+                    $('ul').empty();
+                    $.each(ary, function(i, score) {
+                        $('<li>').text([
+                            i + 1,
+                            '位 ',
+                            score.get('username'),
+                            'さん : ',
+                            score.get('score'),
+                            '点'
+                            ].join('')).appendTo('ul');
+                    });
+                });
+            }
+
+        });
+</script>
+</body>
+</html>
